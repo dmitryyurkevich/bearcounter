@@ -1,3 +1,5 @@
+from time import sleep
+
 import allure
 import json
 import pytest
@@ -12,6 +14,8 @@ from common_helper import get_subdicts, get_sublists
 
 
 @allure.feature("post bear")
+@allure.feature("get bear")
+@allure.feature("delete bear")
 @pytest.mark.parametrize("bear_params", get_pairwise_bear_data())
 def test_post_real_bear(service, client, bear_params):
     try:
@@ -23,9 +27,17 @@ def test_post_real_bear(service, client, bear_params):
         bear_id = int(res.text)
         assert bear_id == 1
     
-        res = client.get_bear(bear_id=bear.bear_id)
+        res = client.get_bear(bear=bear)
         assert res.status_code == 200
         assert res.json() == json.loads(bear.to_json())
+
+        res = client.delete_bear(bear=bear)
+        assert res.status_code == 200
+        assert res.text == "OK"
+
+        res = client.get_bear(bear=bear)
+        assert res.status_code == 200
+        assert res.text == "EMPTY"
 
     finally:
         allure.attach.file(service.log_file)
@@ -76,14 +88,14 @@ def test_post_bear_extra_id(service, client):
         assert res.status_code == 200
         assert res.text == "1"
     
-        res = client.get_bear(bear_id=1)
+        res = api.get_bear(client=client.session, b_id=1)
         assert res.status_code == 200
         assert res.json()["bear_id"] == 1
         assert res.json()["bear_type"] == bear1.bear_type
         assert res.json()["bear_name"] == bear1.bear_name
         assert res.json()["bear_age"] == bear1.bear_age
     
-        res = client.get_bear(bear_id=2)
+        res = api.get_bear(client=client.session, b_id=2)
         assert res.text == "EMPTY"
     
         bear2 = Bear.get_real()
@@ -93,7 +105,7 @@ def test_post_bear_extra_id(service, client):
         assert res.status_code == 200
         assert res.text == "2"
     
-        res = client.get_bear(bear_id=1)
+        res = api.get_bear(client=client.session, b_id=1)
         assert res.status_code == 200
         assert res.json()["bear_id"] == 1
         assert res.json()["bear_type"] == bear1.bear_type
@@ -107,7 +119,7 @@ def test_post_bear_extra_id(service, client):
 @allure.feature("post bear")
 def test_post_bear_duplicate_name(service, client):
     try:
-        bear1 = Bear.get_real()
+        bear1 = Bear.get_real().set_age(1.0)
         res = client.post_bear(bear=bear1)
         assert res.status_code == 200
         assert bear1.bear_id == 1
