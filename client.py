@@ -1,10 +1,13 @@
-import httpx as httpx
+import json
+import httpx
 
 import api
 
+from waiting import wait
+
 from bear import Bear
 from service import Service
-from waiting import wait
+
 
 SERVICE_TIMEOUT = 3  # seconds
 
@@ -31,7 +34,7 @@ class Client:
     def get_bears(self):
         return api.get_bears(self.session)
 
-    def post_bear(self, bear: Bear, wait_result: bool = False):
+    def post_bear(self, bear: Bear, wait_result: bool = False) -> httpx.Response:
         if bear.bear_id:
             raise RuntimeError(f"bear is already has been registered: {bear}")
 
@@ -49,7 +52,7 @@ class Client:
 
         return res
 
-    def put_bear(self, bear: Bear, wait_result: bool = False):
+    def put_bear(self, bear: Bear, wait_result: bool = False) -> httpx.Response:
         res = api.put_bear(self.session, b_id=bear.bear_id, b_type=bear.type, b_name=bear.name, b_age=bear.age)
 
         if res.status_code == 200:
@@ -61,7 +64,7 @@ class Client:
 
         return res
 
-    def delete_bear(self, bear: Bear, wait_result: bool = False):
+    def delete_bear(self, bear: Bear, wait_result: bool = False) -> httpx.Response:
         res = api.delete_bear(self.session, b_id=bear.bear_id)
 
         if res.status_code == 200:
@@ -73,7 +76,7 @@ class Client:
 
         return res
 
-    def delete_bears(self, wait_result: bool = False):
+    def delete_bears(self, wait_result: bool = False) -> httpx.Response:
         res = api.delete_bears(self.session)
 
         if res.status_code == 200:
@@ -85,20 +88,20 @@ class Client:
 
         return res
 
-    def check_registered(self, bear: Bear):
+    def check_registered(self, bear: Bear) -> bool:
         res = self.get_bear(bear=bear)
-
         if res.status_code == 200:
-            if res.json()["bear_name"] == bear.bear_name:
-                if res.json()["bear_age"] == bear.bear_age:
-                    if res.json()["bear_type"] == str(bear.bear_type):
-                        return True
-
+            return res.json() == json.loads(bear.to_json())
         return False
 
-    def check_deleted(self, bear: Bear):
-        return self.get_bear(bear=bear).text == "EMPTY"
+    def check_deleted(self, bear: Bear) -> bool:
+        res = self.get_bear(bear=bear)
+        if res.status_code == 200:
+            return res.text == "EMPTY"
+        return False
 
-    def check_deleted_all(self):
-        return self.get_bears().json() == []
-
+    def check_deleted_all(self) -> bool:
+        res = self.get_bears()
+        if res.status_code == 200:
+            return res.json() == []
+        return False
