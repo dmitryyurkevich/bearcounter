@@ -1,5 +1,3 @@
-from time import sleep
-
 import allure
 import json
 import pytest
